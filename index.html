@@ -1,0 +1,262 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NPC IRL — Touch Grass</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: #10140f;
+    color: #e9f5db;
+    font-family: system-ui, sans-serif;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+}
+
+.app {
+    width: 100%;
+    max-width: 480px;
+    border: 1px solid #46583d;
+    border-radius: 22px;
+    padding: 25px;
+    background: #1b2418;
+    box-shadow: 0 15px 60px #0007;
+}
+
+.badge {
+    color: #b5f36b;
+    font-size: 12px;
+    letter-spacing: 3px;
+}
+
+h1 {
+    font-size: 42px;
+    margin: 12px 0 4px;
+}
+
+h1 span { color: #b5f36b; }
+
+.subtitle {
+    color: #aab9a0;
+    margin-bottom: 25px;
+}
+
+.stats {
+    display: flex;
+    justify-content: space-between;
+    background: #10140f;
+    padding: 14px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+
+.label {
+    color: #aab9a0;
+    font-size: 12px;
+}
+
+.value {
+    color: #b5f36b;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+select, button {
+    width: 100%;
+    border-radius: 10px;
+    padding: 14px;
+    margin-top: 10px;
+    font: inherit;
+}
+
+select {
+    background: #10140f;
+    color: white;
+    border: 1px solid #46583d;
+}
+
+button {
+    background: #b5f36b;
+    color: #10140f;
+    border: 0;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+button:disabled {
+    opacity: .5;
+    cursor: wait;
+}
+
+.secondary {
+    background: #34432d;
+    color: #e9f5db;
+}
+
+.card {
+    margin-top: 20px;
+    padding: 20px;
+    border: 1px solid #46583d;
+    border-radius: 16px;
+    display: none;
+}
+
+.card h2 { margin-top: 10px; }
+
+.mission {
+    line-height: 1.7;
+    font-size: 17px;
+}
+
+.fact {
+    margin-top: 16px;
+    color: #b5f36b;
+    font-size: 13px;
+}
+
+.status {
+    margin-top: 15px;
+    color: #aab9a0;
+    font-size: 13px;
+}
+
+footer {
+    text-align: center;
+    margin-top: 22px;
+    font-size: 12px;
+    color: #819078;
+}
+</style>
+</head>
+
+<body>
+<main class="app">
+    <div class="badge">REAL WORLD RPG // OFFLINE AI</div>
+
+    <h1>NPC <span>IRL</span></h1>
+    <div class="subtitle">Your world is the map. Touch grass to level up.</div>
+
+    <div class="stats">
+        <div>
+            <div class="label">TOTAL XP</div>
+            <div class="value" id="xp">0 XP</div>
+        </div>
+        <div>
+            <div class="label">QUESTS COMPLETE</div>
+            <div class="value" id="count">0</div>
+        </div>
+        <div>
+            <div class="label">PLAYER LEVEL</div>
+            <div class="value" id="level">1</div>
+        </div>
+    </div>
+
+    <label for="mode">Choose your adventure</label>
+    <select id="mode">
+        <option value="chaos">🎲 Chaos mode</option>
+        <option value="nature">🌿 Nature explorer</option>
+        <option value="detective">🕵️ Neighborhood detective</option>
+        <option value="artist">🎨 Street artist (observe, don't touch)</option>
+        <option value="alien">👽 Alien on Earth</option>
+    </select>
+
+    <button id="generate" onclick="generateQuest()">
+        GENERATE MY QUEST
+    </button>
+
+    <section class="card" id="card">
+        <div class="badge">NEW QUEST DISCOVERED</div>
+        <h2 id="title"></h2>
+        <div class="mission" id="mission"></div>
+        <div class="fact" id="fact"></div>
+        <button onclick="completeQuest()">✓ QUEST COMPLETE (+<span id="reward">30</span> XP)</button>
+        <button class="secondary" onclick="generateQuest()">↻ REROLL QUEST</button>
+    </section>
+
+    <div class="status" id="status">Ready when you are, player.</div>
+
+    <footer>POWERED BY LOCAL OPEN-WEIGHT AI · GO OUTSIDE.</footer>
+</main>
+
+<script>
+let xp = Number(localStorage.getItem("npc-xp") || 0);
+let count = Number(localStorage.getItem("npc-count") || 0);
+let currentQuest = null;
+let completed = false;
+
+function updateStats() {
+    document.getElementById("xp").textContent = xp + " XP";
+    document.getElementById("count").textContent = count;
+    document.getElementById("level").textContent =
+        Math.floor(xp / 100) + 1;
+
+    localStorage.setItem("npc-xp", xp);
+    localStorage.setItem("npc-count", count);
+}
+
+async function generateQuest() {
+    const btn = document.getElementById("generate");
+    const status = document.getElementById("status");
+
+    btn.disabled = true;
+    status.textContent = "Your local AI is inventing something suspicious...";
+    document.getElementById("card").style.display = "none";
+
+    try {
+        const response = await fetch("/quest", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                mode: document.getElementById("mode").value
+            })
+        });
+
+        if (!response.ok) throw new Error("AI server unavailable");
+
+        currentQuest = await response.json();
+        completed = false;
+
+        document.getElementById("title").textContent = currentQuest.title;
+        document.getElementById("mission").textContent = currentQuest.mission;
+        document.getElementById("fact").textContent =
+            "DID YOU KNOW? " + currentQuest.fun_fact;
+        document.getElementById("reward").textContent =
+            currentQuest.xp || 30;
+
+        document.getElementById("card").style.display = "block";
+        status.textContent = "Quest ready. Screen down, eyes up.";
+    } catch (e) {
+        status.textContent =
+            "Couldn't reach local AI. Is Ollama running with llama3.2:3b?";
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+function completeQuest() {
+    if (!currentQuest || completed) return;
+
+    completed = true;
+    const reward = Number(currentQuest.xp) || 30;
+    xp += reward;
+    count++;
+
+    updateStats();
+    document.getElementById("status").textContent =
+        "QUEST COMPLETE! You are becoming a legend. 🌿";
+
+    document.querySelector("#card button").disabled = true;
+}
+
+updateStats();
+</script>
+</body>
+</html>
+```
